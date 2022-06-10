@@ -77,6 +77,7 @@ lazy val core = (project in file("core"))
           defaultSettings,
           libraryDependencies ++= Seq(
                   //please keep in alphabetical order
+                  akkaClusterTyped,
                   akkaTyped,
                   bcel,
                   curatorRecipes,
@@ -100,6 +101,7 @@ lazy val core = (project in file("core"))
                   scalaTestCompile,
                   slf4j,
                   sprayJson,
+                  testContainers,
                   timeSeries,
                   twitterChill,
                   catsEffect,
