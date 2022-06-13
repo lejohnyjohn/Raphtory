@@ -1,5 +1,7 @@
 package com.raphtory.internals.management.id
 
+import cats.effect.Resource
+import cats.effect.Sync
 import com.typesafe.scalalogging.Logger
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.CuratorFrameworkFactory
@@ -8,20 +10,15 @@ import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.retry.RetryNTimes
 import org.slf4j.LoggerFactory;
 
-private[raphtory] class ZookeeperIDManager(zookeeperAddress: String, atomicPath: String)
-        extends IDManager {
+private[raphtory] class ZookeeperIDManager(
+    zookeeperAddress: String,
+    atomicPath: String,
+    client: CuratorFramework
+) extends IDManager {
   private val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
-
-  private val client: CuratorFramework = CuratorFrameworkFactory
-    .builder()
-    .connectString(zookeeperAddress)
-    .retryPolicy(new ExponentialBackoffRetry(1000, 3))
-    .build();
 
   private val atomicInt: DistributedAtomicInteger =
     new DistributedAtomicInteger(client, atomicPath, new RetryNTimes(10, 500), null);
-
-  client.start
 
   def getNextAvailableID(): Option[Int] = {
     val incremented = atomicInt.increment()
@@ -54,7 +51,21 @@ private[raphtory] class ZookeeperIDManager(zookeeperAddress: String, atomicPath:
     )
   }
 
-  def stop(): Unit =
-    client.close()
+}
 
+object ZookeeperIDManager {
+
+  def apply[IO[_]: Sync](
+      zookeeperAddress: String,
+      atomicPath: String
+  ): Resource[IO, ZookeeperIDManager] =
+    Resource
+      .fromAutoCloseable(Sync[IO].delay {
+        CuratorFrameworkFactory
+          .builder()
+          .connectString(zookeeperAddress)
+          .retryPolicy(new ExponentialBackoffRetry(1000, 3))
+          .build();
+      })
+      .map(new ZookeeperIDManager(zookeeperAddress, atomicPath, _))
 }

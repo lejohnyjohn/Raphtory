@@ -1,5 +1,7 @@
 package com.raphtory.internals.management
 
+import cats.effect.Resource
+import cats.effect.Sync
 import com.raphtory.api.input.GraphBuilder
 import com.raphtory.api.input.Spout
 import com.raphtory.api.querytracker.QueryProgressTracker
@@ -15,6 +17,7 @@ import com.raphtory.internals.components.querymanager.QueryManager
 import com.raphtory.internals.components.spout.SpoutExecutor
 import com.raphtory.internals.graph.GraphAlteration
 import com.raphtory.internals.graph.GraphPartition
+import com.raphtory.internals.management.id.IDManager
 import com.raphtory.internals.management.id.LocalIDManager
 import com.raphtory.internals.management.id.ZookeeperIDManager
 import com.raphtory.internals.storage.pojograph.PojoBasedPartition
@@ -28,23 +31,13 @@ import scala.reflect.ClassTag
 private[raphtory] class ComponentFactory(
     conf: Config,
     topicRepo: TopicRepository,
-    localDeployment: Boolean = false
+    localDeployment: Boolean = false,
+    builderIDManager: IDManager,
+    partitionIDManager: IDManager
 ) {
   private val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
   private lazy val deploymentID = conf.getString("raphtory.deploy.id")
-
-  private lazy val (builderIDManager, partitionIDManager) =
-    if (localDeployment)
-      (new LocalIDManager, new LocalIDManager)
-    else {
-      val zookeeperAddress     = conf.getString("raphtory.zookeeper.address")
-      val zkBuilderIDManager   =
-        new ZookeeperIDManager(zookeeperAddress, s"/$deploymentID/builderCount")
-      val zkPartitionIDManager =
-        new ZookeeperIDManager(zookeeperAddress, s"/$deploymentID/partitionCount")
-      (zkBuilderIDManager, zkPartitionIDManager)
-    }
 
   def builder[T: ClassTag](
       graphBuilder: GraphBuilder[T],
@@ -209,11 +202,8 @@ private[raphtory] class ComponentFactory(
     queryTracker
   }
 
-  def stop(): Unit = {
-    partitionIDManager.stop()
-    builderIDManager.stop()
+  def stop(): Unit =
     topicRepo.shutdown()
-  }
 }
 
 private[raphtory] case class ThreadedWorker[T](worker: Component[T])
@@ -223,3 +213,37 @@ private[raphtory] case class Partitions(
     readers: List[Reader],
     writers: List[Component[GraphAlteration]]
 )
+
+object ComponentFactory {
+
+  def apply[IO[_]: Sync](
+      config: Config,
+      topicRepository: TopicRepository,
+      localDeployment: Boolean
+  ): Resource[IO, ComponentFactory] = {
+    val deploymentID = config.getString("raphtory.deploy.id")
+    for {
+      builderIDManager   <- makeIdManager(config, localDeployment, s"/$deploymentID/builderCount")
+      partitionIDManager <- makeIdManager(config, localDeployment, s"/$deploymentID/partitionCount")
+    } yield new ComponentFactory(
+            config,
+            topicRepository,
+            localDeployment,
+            builderIDManager,
+            partitionIDManager
+    )
+  }
+
+  def makeIdManager[IO[_]: Sync](
+      config: Config,
+      localDeployment: Boolean,
+      path: String
+  ): Resource[IO, IDManager] =
+    if (localDeployment)
+      Resource.eval(Sync[IO].delay(new LocalIDManager))
+    else {
+      val zookeeperAddress = config.getString("raphtory.zookeeper.address")
+      ZookeeperIDManager(zookeeperAddress, path)
+    }
+
+}

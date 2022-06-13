@@ -8,19 +8,12 @@ import com.raphtory.api.input.Spout
 import com.raphtory.internals.communication.repositories.PulsarAkkaTopicRepository
 import com.raphtory.internals.communication.repositories.PulsarTopicRepository
 import com.raphtory.internals.components.querymanager.Query
-import com.raphtory.internals.management.ComponentFactory
-import com.raphtory.internals.management.ConfigHandler
-import com.raphtory.internals.management.GraphDeployment
-import com.raphtory.internals.management.Scheduler
-import com.raphtory.internals.management.Py4JServer
-import com.raphtory.internals.management.QuerySender
+import com.raphtory.internals.management._
 import com.raphtory.spouts.IdentitySpout
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
-import io.prometheus.client.exporter.HTTPServer
 import org.slf4j.LoggerFactory
 
-import java.io.IOException
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
 
@@ -52,8 +45,8 @@ import scala.reflect.runtime.universe.TypeTag
 object Raphtory {
   private val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
-  private lazy val javaPy4jGatewayServer           = new Py4JServer(this)
-  private var prometheusServer: Option[HTTPServer] = None
+//  private lazy val javaPy4jGatewayServer           = new Py4JServer(this)
+//  private var prometheusServer: Option[HTTPServer] = None
 
   /** Creates a streaming version of a `DeployedTemporalGraph` object that can be used to express queries from.
     *
@@ -93,8 +86,8 @@ object Raphtory {
   def connect(customConfig: Map[String, Any] = Map()): TemporalGraphConnection = {
     val scheduler        = new Scheduler()
     val conf             = confBuilder(customConfig, true)
-    javaPy4jGatewayServer.start(conf)
-    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
+//    javaPy4jGatewayServer.start(conf)
+//    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
     val topics           = PulsarTopicRepository(conf)
     val componentFactory = new ComponentFactory(conf, topics)
     val querySender      = new QuerySender(componentFactory, scheduler, topics)
@@ -123,7 +116,7 @@ object Raphtory {
   private[raphtory] def createSpout[T](spout: Spout[T]): Unit = {
     val scheduler        = new Scheduler()
     val conf             = confBuilder(distributed = true)
-    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
+//    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
     val topics           = PulsarTopicRepository(conf)
     val componentFactory = new ComponentFactory(conf, topics)
     componentFactory.spout(spout, false, scheduler)
@@ -134,7 +127,7 @@ object Raphtory {
   ): Unit = {
     val scheduler        = new Scheduler()
     val conf             = confBuilder(distributed = true)
-    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
+//    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
     val topics           = PulsarTopicRepository(conf)
     val componentFactory = new ComponentFactory(conf, topics)
     componentFactory.builder(builder, false, scheduler)
@@ -147,7 +140,7 @@ object Raphtory {
   ): Unit = {
     val scheduler        = new Scheduler()
     val conf             = confBuilder(distributed = true)
-    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
+//    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
     val topics           = PulsarTopicRepository(conf)
     val componentFactory = new ComponentFactory(conf, topics)
     componentFactory.partition(scheduler, batchLoading, spout, graphBuilder)
@@ -156,33 +149,33 @@ object Raphtory {
   private[raphtory] def createQueryManager(): Unit = {
     val scheduler        = new Scheduler()
     val conf             = confBuilder(distributed = true)
-    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
+//    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
     val topics           = PulsarTopicRepository(conf)
     val componentFactory = new ComponentFactory(conf, topics)
     componentFactory.query(scheduler)
   }
 
-  private def newPrometheusServer(prometheusPort: Int): Unit =
-    try prometheusServer = Some(new HTTPServer(prometheusPort))
-    catch {
-      case e: IOException =>
-        logger.error(
-                s"Cannot create prometheus server as port $prometheusPort is already bound, " +
-                  s"this could be you have multiple raphtory instances running on the same machine. "
-        )
-    }
-
-  private[raphtory] def startPrometheus(prometheusPort: Int): Unit =
-    synchronized {
-      prometheusServer match {
-        case Some(server) =>
-          if (server.getPort != prometheusPort)
-            logger.warn(
-                    s"This Raphtory Instance is already running a Prometheus Server on port ${server.getPort}."
-            )
-        case None         => newPrometheusServer(prometheusPort)
-      }
-    }
+//  private def newPrometheusServer(prometheusPort: Int): Unit =
+//    try prometheusServer = Some(new HTTPServer(prometheusPort))
+//    catch {
+//      case e: IOException =>
+//        logger.error(
+//                s"Cannot create prometheus server as port $prometheusPort is already bound, " +
+//                  s"this could be you have multiple raphtory instances running on the same machine. "
+//        )
+//    }
+//
+//  private[raphtory] def startPrometheus(prometheusPort: Int): Unit =
+//    synchronized {
+//      prometheusServer match {
+//        case Some(server) =>
+//          if (server.getPort != prometheusPort)
+//            logger.warn(
+//                    s"This Raphtory Instance is already running a Prometheus Server on port ${server.getPort}."
+//            )
+//        case None         => newPrometheusServer(prometheusPort)
+//      }
+//    }
 
   private def deployLocalGraph[T: ClassTag: TypeTag](
       spout: Spout[T] = new IdentitySpout[T](),
@@ -212,7 +205,7 @@ object Raphtory {
   }
 
   def shutdown(): Unit = {
-    prometheusServer.foreach(_.close())
-    javaPy4jGatewayServer.shutdown()
+//    prometheusServer.foreach(_.close())
+//    javaPy4jGatewayServer.shutdown()
   }
 }
