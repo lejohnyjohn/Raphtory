@@ -9,8 +9,7 @@ import com.raphtory.internals.storage.pojograph.OrderedBuffer.TupleByFirstOrderi
 import scala.collection.Searching.Found
 import scala.collection.Searching.InsertionPoint
 
-abstract private[raphtory] class PojoExEntity(entity: PojoEntity, view: PojoGraphLens)
-        extends EntityVisitor {
+abstract private[raphtory] class PojoExEntity(entity: PojoEntity, view: PojoGraphLens) extends EntityVisitor {
   def Type(): String = entity.getType
 
   def firstActivityAfter(time: Long, strict: Boolean = true): Option[HistoricEvent] =
@@ -32,9 +31,7 @@ abstract private[raphtory] class PojoExEntity(entity: PojoEntity, view: PojoGrap
       }
 
   def lastActivityBefore(time: Long, strict: Boolean = true): Option[HistoricEvent] =
-    if (
-            strict && time <= entity.oldestPoint
-    ) // <= because if its the oldest time there cannot be an event before it
+    if (strict && time <= entity.oldestPoint) // <= because if its the oldest time there cannot be an event before it
       None
     else if (!strict && time < entity.oldestPoint)
       None
