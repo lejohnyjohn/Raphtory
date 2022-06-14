@@ -77,16 +77,16 @@ private[raphtory] class ComponentFactory(
     }
     else None
 
-  def partition[T: ClassTag](
+  def partition(
       scheduler: Scheduler,
       batchLoading: Boolean = false,
-      spout: Option[Spout[T]] = None,
-      graphBuilder: Option[GraphBuilder[T]] = None
+      spout: Option[Spout[GraphAlteration]] = None,
+      graphBuilder: Option[GraphBuilder[GraphAlteration]] = None
   ): Partitions = {
     val totalPartitions = conf.getInt("raphtory.partitions.countPerServer")
     logger.info(s"Creating '$totalPartitions' Partition Managers for $deploymentID.")
 
-    val batchWriters = mutable.Map[Int, BatchWriter[T]]()
+    val batchWriters = mutable.Map[Int, BatchWriter[GraphAlteration]]()
     val partitionIDs = mutable.Set[Int]()
 
     val partitions = if (batchLoading) {
@@ -102,7 +102,7 @@ private[raphtory] class ComponentFactory(
         batchWriters += (
                 (
                         i,
-                        new BatchWriter[T](
+                        new BatchWriter[GraphAlteration](
                                 partitionID,
                                 storage
                         )
@@ -116,7 +116,7 @@ private[raphtory] class ComponentFactory(
         (storage, reader)
       }
 
-      val batchHandler = new LocalBatchHandler[T](
+      val batchHandler = new LocalBatchHandler[GraphAlteration](
               partitionIDs,
               batchWriters,
               spout.get,
