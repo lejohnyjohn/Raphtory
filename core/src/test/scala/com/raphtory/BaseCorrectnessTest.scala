@@ -1,15 +1,8 @@
 package com.raphtory
 
-import com.google.common.hash.Hashing
-import com.raphtory.api.analysis.algorithm.Generic
 import com.raphtory.api.analysis.algorithm.GenericallyApplicable
-import com.raphtory.api.input.GraphBuilder
-import com.raphtory.api.input.Spout
-import com.raphtory.spouts.IdentitySpout
-import com.raphtory.spouts.ResourceSpout
-import com.raphtory.spouts.SequenceSpout
-
-import java.nio.charset.StandardCharsets
+import com.raphtory.api.input.{GraphBuilder, Spout}
+import com.raphtory.spouts.{IdentitySpout, ResourceSpout, SequenceSpout}
 
 abstract class BaseCorrectnessTest extends BaseRaphtoryAlgoTest[String] {
 
@@ -35,33 +28,37 @@ abstract class BaseCorrectnessTest extends BaseRaphtoryAlgoTest[String] {
       graphResource: String,
       resultsResource: String,
       lastTimestamp: Int
-  ): Boolean = {
-    graph = Raphtory.load(ResourceSpout(graphResource), setGraphBuilder())
-
-    val res = algorithmPointTest(
-            algorithm,
-            lastTimestamp
-    ) == correctResultsHash(
-            resultsResource
-    )
-    graph.deployment.stop()
-    res
-  }
+  ): Boolean =
+    Raphtory
+      .load(ResourceSpout(graphResource), setGraphBuilder())
+      .use {
+        algorithmPointTest(algorithm, lastTimestamp)
+      }
+      .map(actual =>
+        actual == correctResultsHash(
+                resultsResource
+        )
+      )
+      .unsafeRunSync()
 
   def correctnessTest(
       algorithm: GenericallyApplicable,
       graphEdges: Seq[String],
       results: Seq[String],
       lastTimestamp: Int
-  ): Boolean = {
-    graph = Raphtory.load(SequenceSpout(graphEdges: _*), setGraphBuilder())
-    val res = algorithmPointTest(
-            algorithm,
-            lastTimestamp
-    ) == correctResultsHash(
-            results
-    )
-    graph.deployment.stop()
-    res
-  }
+  ): Boolean =
+    Raphtory
+      .load(SequenceSpout(graphEdges: _*), setGraphBuilder())
+      .use {
+        algorithmPointTest(
+                algorithm,
+                lastTimestamp
+        )
+      }
+      .map(actual =>
+        actual == correctResultsHash(
+                results
+        )
+      )
+      .unsafeRunSync()
 }

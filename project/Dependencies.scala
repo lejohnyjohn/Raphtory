@@ -20,6 +20,7 @@ object Dependencies {
   private lazy val akkaTypedVersion      = "2.6.19"
   private lazy val catsEffectVersion     = "3.3.12"
   private lazy val catsVersion           = "2.7.0"
+  private lazy val catsMUnitVersion      = "1.0.7"
 
 
   lazy val excludePulsarBinding = ExclusionRule(organization = "org.apache.pulsar")
@@ -61,6 +62,7 @@ object Dependencies {
   lazy val zookeeper      = "org.apache.zookeeper" % "zookeeper"        % zookeeperVersion
   lazy val akkaTyped      = "com.typesafe.akka"   %% "akka-actor-typed" % akkaTypedVersion
   lazy val catsEffect = "org.typelevel" %% "cats-effect" % catsEffectVersion
+  lazy val catsMUnit= "org.typelevel" %% "munit-cats-effect-3" % catsMUnitVersion % Test
   lazy val alleyCats = "org.typelevel" %% "alleycats-core" % catsVersion
 
 }
