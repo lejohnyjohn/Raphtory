@@ -46,7 +46,7 @@ private[raphtory] class GraphDeployment[T: ClassTag: TypeTag](
   logger.info(s"Created Graph Spout topic with name '$spoutTopic'.")
 
   /** Stops components - partitions, query manager, graph builders, spout worker */
-  def stop(): Unit = {
+  def stop(): Unit =
     // partitions.writers.foreach(_.stop())
     // partitions.readers.foreach(_.stop())
     // partitions = null
@@ -67,7 +67,6 @@ private[raphtory] class GraphDeployment[T: ClassTag: TypeTag](
 //      case None         =>
 //    }
     componentFactory.stop()
-  }
 
   private def allowIllegalReflection() = {
     import java.lang.reflect.Field
