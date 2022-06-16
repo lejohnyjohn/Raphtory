@@ -213,37 +213,3 @@ private[raphtory] case class Partitions(
     readers: List[Reader],
     writers: List[Component[GraphAlteration]]
 )
-
-object ComponentFactory {
-
-  def apply[IO[_]: Sync](
-      config: Config,
-      topicRepository: TopicRepository,
-      localDeployment: Boolean
-  ): Resource[IO, ComponentFactory] = {
-    val deploymentID = config.getString("raphtory.deploy.id")
-    for {
-      builderIDManager   <- makeIdManager(config, localDeployment, s"/$deploymentID/builderCount")
-      partitionIDManager <- makeIdManager(config, localDeployment, s"/$deploymentID/partitionCount")
-    } yield new ComponentFactory(
-            config,
-            topicRepository,
-            localDeployment,
-            builderIDManager,
-            partitionIDManager
-    )
-  }
-
-  def makeIdManager[IO[_]: Sync](
-      config: Config,
-      localDeployment: Boolean,
-      path: String
-  ): Resource[IO, IDManager] =
-    if (localDeployment)
-      Resource.eval(Sync[IO].delay(new LocalIDManager))
-    else {
-      val zookeeperAddress = config.getString("raphtory.zookeeper.address")
-      ZookeeperIDManager(zookeeperAddress, path)
-    }
-
-}
