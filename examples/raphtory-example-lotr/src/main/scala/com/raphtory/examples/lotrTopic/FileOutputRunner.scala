@@ -1,47 +1,48 @@
 package com.raphtory.examples.lotrTopic
 
+import cats.effect.ExitCode
+import cats.effect.IO
+import cats.effect.IOApp
 import com.raphtory.Raphtory
-import com.raphtory.algorithms.filters.EdgeQuantileFilter
-import com.raphtory.algorithms.filters.VertexQuantileFilter
+import com.raphtory.algorithms.generic.ConnectedComponents
 import com.raphtory.examples.lotrTopic.analysis.DegreesSeparation
 import com.raphtory.examples.lotrTopic.graphbuilders.LOTRGraphBuilder
-import com.raphtory.spouts.FileSpout
 import com.raphtory.sinks.FileSink
-import com.raphtory.algorithms.generic.ConnectedComponents
-import com.raphtory.algorithms.generic.centrality.Degree
-import com.raphtory.algorithms.generic.centrality.WeightedDegree
+import com.raphtory.spouts.FileSpout
 import com.raphtory.utils.FileUtils
 
 import scala.language.postfixOps
-import sys.process._
-import java.io.File
-import com.raphtory.algorithms.generic.ConnectedComponents
 
-object FileOutputRunner extends App {
-  val path = "/tmp/lotr.csv"
-  val url  = "https://raw.githubusercontent.com/Raphtory/Data/main/lotr.csv"
+object FileOutputRunner extends IOApp {
 
-  FileUtils.curlFile(path, url)
+  override def run(args: List[String]): IO[ExitCode] = {
+    val path = "/tmp/lotr.csv"
+    val url  = "https://raw.githubusercontent.com/Raphtory/Data/main/lotr.csv"
 
-  val source  = FileSpout(path)
-  val builder = new LOTRGraphBuilder()
-  val graph   = Raphtory.load(spout = source, graphBuilder = builder)
-  val output  = FileSink("/tmp/raphtory")
+    FileUtils.curlFile(path, url)
 
-  val queryHandler = graph
-    .at(32674)
-    .past()
-    .execute(DegreesSeparation())
-    .writeTo(output)
+    val source  = FileSpout(path)
+    val builder = new LOTRGraphBuilder()
+    Raphtory.load(spout = source, graphBuilder = builder).use { graph =>
+      IO.blocking {
 
-  queryHandler.waitForJob()
+        val output = FileSink("/tmp/raphtory")
+        graph
+          .at(32674)
+          .past()
+          .execute(DegreesSeparation())
+          .writeTo(output)
+          .waitForJob()
 
-  val queryHandlerCC = graph
-    .at(32674)
-    .past()
-    .execute(ConnectedComponents())
-    .writeTo(output)
-
-  queryHandlerCC.waitForJob()
+        graph
+          .at(32674)
+          .past()
+          .execute(ConnectedComponents())
+          .writeTo(output)
+          .waitForJob()
+        ExitCode.Success
+      }
+    }
+  }
 
 }

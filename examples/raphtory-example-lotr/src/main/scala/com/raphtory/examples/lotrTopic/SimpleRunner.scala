@@ -1,18 +1,24 @@
 package com.raphtory.examples.lotrTopic
 
+import cats.effect.{ExitCode, IO, IOApp}
 import com.raphtory.Raphtory
 import com.raphtory.examples.lotrTopic.graphbuilders.LOTRGraphBuilder
-import com.raphtory.sinks.FileSink
 import com.raphtory.spouts.FileSpout
 import com.raphtory.utils.FileUtils
 
-object SimpleRunner extends App {
-  val path = "/tmp/lotr.csv"
-  val url  = "https://raw.githubusercontent.com/Raphtory/Data/main/lotr.csv"
+object SimpleRunner extends IOApp {
 
-  FileUtils.curlFile(path, url)
+  override def run(args: List[String]): IO[ExitCode] = {
 
-  val source  = FileSpout(path)
-  val builder = new LOTRGraphBuilder()
-  val graph   = Raphtory.stream(spout = source, graphBuilder = builder)
+    val path = "/tmp/lotr.csv"
+    val url  = "https://raw.githubusercontent.com/Raphtory/Data/main/lotr.csv"
+
+    FileUtils.curlFile(path, url)
+
+    val source  = FileSpout(path)
+    val builder = new LOTRGraphBuilder()
+    Raphtory.stream(spout = source, graphBuilder = builder).use { _ =>
+      IO.pure(ExitCode.Success)
+    }
+  }
 }
