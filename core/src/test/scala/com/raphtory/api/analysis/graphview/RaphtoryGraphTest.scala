@@ -24,7 +24,7 @@ class RaphtoryGraphTest extends AnyFunSuite {
       .filter(_.getInt(0) == 1)
     val query = table.asInstanceOf[TableImplementation].query
 
-    graph.disconnect()
+    graph.close()
 
     assert(query.timelineStart === 100)
     assert(query.timelineEnd === 499)
@@ -49,7 +49,7 @@ class RaphtoryGraphTest extends AnyFunSuite {
       .from("2020-02-25 23:12:08")
       .query
 
-    graph.disconnect()
+    graph.close()
 
     assert(query.timelineStart != Long.MinValue)
   }
@@ -60,7 +60,7 @@ class RaphtoryGraphTest extends AnyFunSuite {
       .from("2020-02-25 23:12:08.567")
       .query
 
-    graph.disconnect()
+    graph.close()
 
     assert(query.timelineStart != Long.MinValue)
   }
@@ -71,7 +71,7 @@ class RaphtoryGraphTest extends AnyFunSuite {
       .from("2020-02-25")
       .query
 
-    graph.disconnect()
+    graph.close()
 
     assert(query.timelineStart != Long.MinValue)
   }
@@ -83,7 +83,7 @@ class RaphtoryGraphTest extends AnyFunSuite {
       .from("2020-02-25 23:12:08.56")
       .query
 
-    graph.disconnect()
+    graph.close()
 
     assert(query.timelineStart != Long.MinValue)
   }
@@ -95,7 +95,7 @@ class RaphtoryGraphTest extends AnyFunSuite {
       .from("2020-02-25 12:23")
       .query
 
-    graph.disconnect()
+    graph.close()
 
     assert(query.timelineStart != Long.MinValue)
   }
