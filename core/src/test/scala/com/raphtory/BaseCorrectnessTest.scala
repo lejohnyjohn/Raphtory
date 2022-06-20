@@ -19,10 +19,6 @@ abstract class BaseCorrectnessTest extends BaseRaphtoryAlgoTest[String] {
     finally source.close()
   }
 
-  override def beforeAll(): Unit = setup()
-
-  override def afterAll(): Unit = {}
-
   private def correctResultsHash(rows: IterableOnce[String]): String =
     resultsHash(rows)
 
