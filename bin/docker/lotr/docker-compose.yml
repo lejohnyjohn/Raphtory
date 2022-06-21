@@ -20,7 +20,8 @@ services:
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
     depends_on:
-      - pulsar
+      pulsar:
+        condition: service_healthy
   builder:
     image: raphtory-lotr
     environment:
@@ -30,7 +31,8 @@ services:
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
     depends_on:
-      - pulsar
+      pulsar:
+        condition: service_healthy
   query:
     image: raphtory-lotr
     hostname: query
@@ -41,7 +43,8 @@ services:
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
     depends_on:
-      - pulsar
+      pulsar:
+        condition: service_healthy
   partition:
     image: raphtory-lotr
     hostname: partition
@@ -54,7 +57,8 @@ services:
     volumes:
       - "/tmp/raphtory:/tmp/raphtory"
     depends_on:
-      - pulsar
+      pulsar:
+        condition: service_healthy
   client:
     image: raphtory-lotr
     hostname: client
@@ -65,4 +69,5 @@ services:
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
     depends_on:
-      - pulsar
+      pulsar:
+        condition: service_healthy
