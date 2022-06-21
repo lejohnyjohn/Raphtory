@@ -20,14 +20,9 @@ services:
       RAPHTORY_PULSAR_ADMIN_ADDRESS: "http://pulsar:8080"
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
-#  zookeeper:
-#    image: zookeeper:3.6.3
-#    hostname: pulsar
   query:
     image: raphtory-lotr
     hostname: query
-    depends_on:
-     - zookeeper
     environment:
       COMPONENT: querymanager
       RAPHTORY_PULSAR_BROKER_ADDRESS: "pulsar://pulsar:6650"
@@ -37,23 +32,17 @@ services:
   partition:
     image: raphtory-lotr
     hostname: partition
-    depends_on:
-      - query
     environment:
       COMPONENT: partitionmanager
       RAPHTORY_PULSAR_BROKER_ADDRESS: "pulsar://pulsar:6650"
       RAPHTORY_PULSAR_ADMIN_ADDRESS: "http://pulsar:8080"
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
-#      RAPHTORY_API_LOG: TRACE
-#      RAPHTORY_INTERNALS_COMPONENTS_PARTITION_LOG: TRACE
     volumes:
       - "/tmp/raphtory:/tmp/raphtory"
   client:
     image: raphtory-lotr
     hostname: client
-    depends_on:
-     - query
     environment:
       COMPONENT: client
       RAPHTORY_PULSAR_BROKER_ADDRESS: "pulsar://pulsar:6650"
