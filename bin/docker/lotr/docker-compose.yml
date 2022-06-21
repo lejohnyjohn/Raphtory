@@ -4,6 +4,13 @@ services:
     hostname: pulsar
     image: apachepulsar/pulsar:2.9.0
     command: bin/pulsar standalone --advertised-address pulsar
+    healthcheck:
+      test: curl -s http://pulsar:8080/admin/v2/worker/cluster
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   spout:
     image: raphtory-lotr
     environment:
@@ -12,6 +19,8 @@ services:
       RAPHTORY_PULSAR_ADMIN_ADDRESS: "http://pulsar:8080"
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
+    depends_on:
+      - pulsar
   builder:
     image: raphtory-lotr
     environment:
@@ -20,6 +29,8 @@ services:
       RAPHTORY_PULSAR_ADMIN_ADDRESS: "http://pulsar:8080"
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
+    depends_on:
+      - pulsar
   query:
     image: raphtory-lotr
     hostname: query
@@ -29,6 +40,8 @@ services:
       RAPHTORY_PULSAR_ADMIN_ADDRESS: "http://pulsar:8080"
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
+    depends_on:
+      - pulsar
   partition:
     image: raphtory-lotr
     hostname: partition
@@ -40,6 +53,8 @@ services:
       RAPHTORY_QUERY_ADDRESS: query
     volumes:
       - "/tmp/raphtory:/tmp/raphtory"
+    depends_on:
+      - pulsar
   client:
     image: raphtory-lotr
     hostname: client
@@ -49,3 +64,5 @@ services:
       RAPHTORY_PULSAR_ADMIN_ADDRESS: "http://pulsar:8080"
       RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
       RAPHTORY_QUERY_ADDRESS: query
+    depends_on:
+      - pulsar
