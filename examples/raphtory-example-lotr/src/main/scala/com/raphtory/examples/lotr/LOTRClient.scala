@@ -2,24 +2,28 @@ package com.raphtory.examples.lotr
 
 import com.raphtory.algorithms.generic.ConnectedComponents
 import com.raphtory.Raphtory
-import com.raphtory.sinks.FileSink
+import com.raphtory.sinks.{FileSink, PrintSink}
 
 object LOTRClient extends App {
 
-  val customConfig: Map[String, String] = Map(
-          ("raphtory.pulsar.admin.address", "http://127.0.0.1:8080"),
-          ("raphtory.pulsar.broker.address", "pulsar://127.0.0.1:6650"),
-          ("raphtory.zookeeper.address", "127.0.0.1:2181")
-  )
+//  val customConfig: Map[String, String] = Map(
+//          ("raphtory.pulsar.admin.address", "http://127.0.0.1:8080"),
+//          ("raphtory.pulsar.broker.address", "pulsar://127.0.0.1:6650"),
+//          ("raphtory.zookeeper.address", "127.0.0.1:2181")
+//  )
 
-  val client = Raphtory.connect(customConfig)
+  val client = Raphtory.connect()
 
-  val output = FileSink("/tmp/raphtory")
+  try {
 
-  val progressTracker = client.execute(ConnectedComponents()).writeTo(output)
+//    val output = FileSink("/tmp/raphtory")
 
-  progressTracker.waitForJob()
+    val progressTracker = client.execute(ConnectedComponents()).writeTo(PrintSink())
 
-  client.disconnect()
+    progressTracker.waitForJob()
+  } finally  {
+
+    client.disconnect()
+  }
 
 }

@@ -6,13 +6,13 @@ services:
     command: bin/pulsar standalone --advertised-address pulsar
     healthcheck:
       test: curl -s http://pulsar:8080/admin/v2/worker/cluster
-      interval: 1m30s
+      interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
   spout:
-    image: raphtory-lotr
+    image: localhost/raphtory-lotr:latest
     environment:
       COMPONENT: spout
       RAPHTORY_PULSAR_BROKER_ADDRESS: "pulsar://pulsar:6650"
@@ -23,7 +23,7 @@ services:
       pulsar:
         condition: service_healthy
   builder:
-    image: raphtory-lotr
+    image: localhost/raphtory-lotr:latest
     environment:
       COMPONENT: builder
       RAPHTORY_PULSAR_BROKER_ADDRESS: "pulsar://pulsar:6650"
@@ -34,7 +34,7 @@ services:
       pulsar:
         condition: service_healthy
   query:
-    image: raphtory-lotr
+    image: localhost/raphtory-lotr:latest
     hostname: query
     environment:
       COMPONENT: querymanager
@@ -46,7 +46,7 @@ services:
       pulsar:
         condition: service_healthy
   partition:
-    image: raphtory-lotr
+    image: localhost/raphtory-lotr:latest
     hostname: partition
     environment:
       COMPONENT: partitionmanager
@@ -60,7 +60,7 @@ services:
       pulsar:
         condition: service_healthy
   client:
-    image: raphtory-lotr
+    image: localhost/raphtory-lotr:latest
     hostname: client
     environment:
       COMPONENT: client

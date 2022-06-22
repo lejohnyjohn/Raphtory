@@ -115,7 +115,7 @@ object Raphtory {
       customConfig: Map[String, Any] = Map(),
       distributed: Boolean = false,
       salt: Option[Int] = None
-  ): Config =
+  ): Config                  =
     confBuilder(customConfig, salt, distributed)
 
   def confBuilder(customConfig: Map[String, Any] = Map(), salt: Option[Int] = None, distributed: Boolean): Config = {
@@ -124,32 +124,6 @@ object Raphtory {
     customConfig.foreach { case (key, value) => confHandler.addCustomConfig(key, value) }
     confHandler.getConfig(distributed)
   }
-
-//  private def deployLocalGraph[T: ClassTag: TypeTag](
-//      spout: Spout[T] = new IdentitySpout[T](),
-//      graphBuilder: GraphBuilder[T],
-//      customConfig: Map[String, Any] = Map(),
-//      batchLoading: Boolean
-//  ) = {
-//    val conf               = confBuilder(customConfig, distributed = false)
-//    val activePythonServer = conf.getBoolean("raphtory.python.active")
-//    if (activePythonServer)
-//      javaPy4jGatewayServer.start(conf)
-//    startPrometheus(conf.getInt("raphtory.prometheus.metrics.port"))
-//    val topics             =
-//      if (activePythonServer) PulsarTopicRepository(conf) else PulsarAkkaTopicRepository(conf)
-//    val componentFactory   = new ComponentFactory(conf, topics, true)
-//    val querySender        = new QuerySender(componentFactory, scheduler, topics)
-//    val deployment         = new GraphDeployment[T](
-//            batchLoading,
-//            spout,
-//            graphBuilder,
-//            conf,
-//            componentFactory,
-//            scheduler
-//    )
-//    new DeployedTemporalGraph(Query(), querySender, deployment, conf)
-//  }
 
   private def deployLocalGraphV2[T: ClassTag, IO[_]: Spawn](
       spout: Spout[T] = new IdentitySpout[T](),
@@ -198,6 +172,9 @@ object Raphtory {
       val partitionServers: Int    = config.getInt("raphtory.partitions.serverCount")
       val partitionsPerServer: Int = config.getInt("raphtory.partitions.countPerServer")
       val totalPartitions: Int     = partitionServers * partitionsPerServer
+      logger.info(
+              s"Partition Servers $partitionServers, Partitions per server: $partitionsPerServer, Total Partitions: [$totalPartitions]"
+      )
       ZookeeperIDManager(zookeeperAddress, deploymentId, "partitionCount", poolSize = totalPartitions)
     }
 

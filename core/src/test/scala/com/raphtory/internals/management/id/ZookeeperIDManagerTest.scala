@@ -21,4 +21,13 @@ class ZookeeperIDManagerTest extends CatsEffectSuite {
     assertEquals(zk.getNextAvailableID(), None)
   }
 
+  test("We can get one id when the total number of partitions is 1") {
+    ZookeeperIDManager[IO](zookeeperAddress, "singular", "testCounter1", 1).use { zk =>
+      IO {
+        assertEquals(zk.getNextAvailableID(), Some(0))
+        assertEquals(zk.getNextAvailableID(), None)
+      }
+    }
+  }
+
 }

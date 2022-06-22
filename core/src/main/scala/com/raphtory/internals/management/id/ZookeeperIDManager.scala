@@ -32,7 +32,7 @@ private[raphtory] class ZookeeperIDManager(
       .nextOption()
 
     id match {
-      case Some(id) => logger.trace(s"Zookeeper $zookeeperAddress: Get new id '$id'.")
+      case Some(id) => logger.info(s"Zookeeper $zookeeperAddress: Get new id '$id'.")
       case None     => logger.error(s"Zookeeper $zookeeperAddress: Failed to get id.")
     }
     id
