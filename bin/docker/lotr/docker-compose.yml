@@ -4,6 +4,9 @@ services:
     hostname: pulsar
     image: apachepulsar/pulsar:2.9.0
     command: bin/pulsar standalone --advertised-address pulsar
+    ports:
+      - "8080:8080"
+      - "6650:6650"
     healthcheck:
       test: curl -s http://pulsar:8080/admin/v2/worker/cluster
       interval: 30s
@@ -59,15 +62,15 @@ services:
     depends_on:
       pulsar:
         condition: service_healthy
-  client:
-    image: localhost/raphtory-lotr:latest
-    hostname: client
-    environment:
-      COMPONENT: client
-      RAPHTORY_PULSAR_BROKER_ADDRESS: "pulsar://pulsar:6650"
-      RAPHTORY_PULSAR_ADMIN_ADDRESS: "http://pulsar:8080"
-      RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
-      RAPHTORY_QUERY_ADDRESS: query
-    depends_on:
-      pulsar:
-        condition: service_healthy
+#  client:
+#    image: localhost/raphtory-lotr:latest
+#    hostname: client
+#    environment:
+#      COMPONENT: client
+#      RAPHTORY_PULSAR_BROKER_ADDRESS: "pulsar://pulsar:6650"
+#      RAPHTORY_PULSAR_ADMIN_ADDRESS: "http://pulsar:8080"
+#      RAPHTORY_ZOOKEEPER_ADDRESS: "pulsar:2181"
+#      RAPHTORY_QUERY_ADDRESS: query
+#    depends_on:
+#      pulsar:
+#        condition: service_healthy

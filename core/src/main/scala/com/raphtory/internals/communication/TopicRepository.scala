@@ -6,6 +6,7 @@ import com.raphtory.internals.communication.repositories.PulsarTopicRepository
 import com.raphtory.internals.graph.GraphAlteration._
 import com.raphtory.internals.components.querymanager.EndQuery
 import com.raphtory.internals.components.querymanager.Query
+import com.raphtory.internals.components.querymanager.QueryLifeCycle
 import com.raphtory.internals.components.querymanager.QueryManagement
 import com.raphtory.internals.components.querymanager.WatermarkTime
 import com.typesafe.config.Config
@@ -51,8 +52,8 @@ private[raphtory] class TopicRepository(
   final def submissions: ExclusiveTopic[Query] =
     ExclusiveTopic[Query](submissionsConnector, s"submissions", depId)
 
-  final def completedQueries: ExclusiveTopic[EndQuery] =
-    ExclusiveTopic[EndQuery](completedQueriesConnector, "completed.queries", depId)
+  final def completedQueries: ExclusiveTopic[QueryLifeCycle] =
+    ExclusiveTopic[QueryLifeCycle](completedQueriesConnector, "completed.queries", depId)
 
   final def watermark: ExclusiveTopic[WatermarkTime] =
     ExclusiveTopic[WatermarkTime](watermarkConnector, "watermark", depId)

@@ -1,7 +1,6 @@
 package com.raphtory.internals.communication.connectors
 
 import cats.effect.Async
-import cats.effect.Sync
 import cats.effect.kernel.Resource
 import com.raphtory.internals.communication.CancelableListener
 import com.raphtory.internals.communication.CanonicalTopic
@@ -38,7 +37,15 @@ private[raphtory] class PulsarConnector(
 
     override def sendAsync(message: T): Unit = {
       logger.debug(s"sending message: '$message' to topic: '${producer.getTopic}'")
-      producer.sendAsync(serialise(message))
+      try {
+        val bytes = serialise(message)
+        producer.sendAsync(bytes)
+      }
+      catch {
+        case t: Throwable =>
+          logger.error(s"Failed to send MSG $message", t)
+          throw t
+      }
     }
     override def close(): Unit = producer.flushAsync().thenApply(_ => producer.closeAsync())
 
@@ -123,8 +130,7 @@ private[raphtory] class PulsarConnector(
         }
         catch {
           case e: Exception =>
-            e.printStackTrace()
-            logger.error(s"Component $listenerId: Failed to handle message. ${e.getMessage}")
+            logger.error(s"Component $listenerId: Failed to handle message. ${e.getMessage}", e)
             consumer.negativeAcknowledge(msg)
             throw e
         }
