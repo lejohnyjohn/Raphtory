@@ -1,14 +1,16 @@
 package com.raphtory.internals.communication.connectors
 
 import java.io.Closeable
-import java.util.concurrent.{CompletableFuture, TimeUnit}
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import cats.effect.Async
 import cats.effect.kernel.Resource
 import com.raphtory.internals.communication._
 import com.raphtory.internals.serialisers.KryoSerialiser
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
-import org.apache.pulsar.client.admin.{PulsarAdmin, PulsarAdminException}
+import org.apache.pulsar.client.admin.PulsarAdmin
+import org.apache.pulsar.client.admin.PulsarAdminException
 import org.apache.pulsar.client.api.PulsarClientException.BrokerMetadataException
 import org.apache.pulsar.client.api._
 import org.apache.pulsar.common.policies.data.RetentionPolicies

@@ -31,6 +31,7 @@ object Dependencies {
   lazy val akkaTyped      = "com.typesafe.akka" %% "akka-actor-typed" % akkaTypedVersion
   lazy val catsEffect     = "org.typelevel"     %% "cats-effect"      % catsEffectVersion
   lazy val curatorRecipes = "org.apache.curator" % "curator-recipes"  % curatorVersion
+  lazy val decline = "com.monovore" %% "decline-effect" % "2.3.0"
 
   lazy val javaxScript =
     "javax.script" % "js-engine" % javaxScriptVersion //Creates a fake POM to avoid the logger throwing a class not found exception

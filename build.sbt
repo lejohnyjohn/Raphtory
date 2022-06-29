@@ -77,6 +77,7 @@ lazy val core = (project in file("core"))
                   //please keep in alphabetical order
                   akkaTyped,
                   curatorRecipes,
+                  decline,
                   gson,
                   javaxScript,
                   log4jSlft4,
