@@ -7,8 +7,7 @@ import com.raphtory.api.analysis.graphview.TemporalGraphConnection
 import com.raphtory.api.input.GraphBuilder
 import com.raphtory.api.input.Spout
 import com.raphtory.internals.communication.TopicRepository
-import com.raphtory.internals.communication.repositories.PulsarAkkaTopicRepository
-import com.raphtory.internals.communication.repositories.PulsarTopicRepository
+import com.raphtory.internals.communication.repositories.{PulsarAkkaTopicRepository, PulsarTopicRepository}
 import com.raphtory.internals.components.graphbuilder.BuildExecutorGroup
 import com.raphtory.internals.components.querymanager.Query
 import com.raphtory.internals.components.querymanager.QueryManager
@@ -186,7 +185,6 @@ object Raphtory { self =>
     val scheduler      = new Scheduler()
     for {
       _                  <- Prometheus[IO](prometheusPort) //FIXME: need some sync because this thing does not stop
-      _                  <- Py4JServer.fromEntryPoint(self, config)
       topicRepo          <- PulsarAkkaTopicRepository(config)
       _                  <- QueryManager(config, topicRepo)
       _                  <- {
