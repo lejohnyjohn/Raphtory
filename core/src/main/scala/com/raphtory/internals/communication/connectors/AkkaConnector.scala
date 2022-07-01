@@ -25,10 +25,13 @@ import org.slf4j.LoggerFactory
 import java.net.InetAddress
 import java.util.concurrent.CompletableFuture
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.DurationInt
+import scala.util.Failure
+import scala.util.Success
 import scala.util.Try
 
 private case object StopActor
@@ -38,20 +41,52 @@ private[raphtory] class AkkaConnector(actorSystem: ActorSystem[SpawnProtocol.Com
   private val akkaReceptionistRegisteringTimeout: Timeout = 1.seconds
   private val akkaSpawnerTimeout: Timeout                 = 1.seconds
   private val akkaReceptionistFindingTimeout: Timeout     = 1.seconds
+  private val ackTimeout: Timeout                         = 1.seconds
   private val kryo: KryoSerialiser                        = KryoSerialiser()
 
-  case class AkkaEndPoint[T](actorRefs: Future[Set[ActorRef[Array[Byte]]]], topic: String) extends EndPoint[T] {
-    private val endPointResolutionTimeout: Duration = 60.seconds
+  case class Ack(id: Long)
+  case class Ordered[T](id: Long, message: T, actorRef: ActorRef[Ack])
 
-    override def sendAsync(message: T): Unit           =
-      try Await.result(actorRefs, endPointResolutionTimeout) foreach (_ ! serialise(message))
-      catch {
-        case e: concurrent.TimeoutException =>
-          val msg =
-            s"Impossible to connect to topic '$topic' through Akka. Maybe some components weren't successfully deployed"
-          logger.error(msg)
-          throw new Exception(msg, e)
+  class AkkaEndPoint[T](actorRefs: Future[Set[ActorRef[Array[Byte]]]], topic: String) extends EndPoint[T] {
+    private val endPointResolutionTimeout: Duration = 60.seconds
+    implicit val ec                                 = actorSystem.executionContext // TODO review
+    private val outputQueue                         = mutable.Queue[T]()
+
+    actorRefs foreach { set => sendMessagesFromQueue(set.toList, 0) }
+
+    @tailrec
+    private def sendMessagesFromQueue(actorRefs: List[ActorRef[Array[Byte]]], startId: Long): Unit = {
+      if (outputQueue.nonEmpty) {
+        val nextMessage = outputQueue.dequeue()
+        ensureDelivery(actorRefs, nextMessage, startId)
       }
+      else
+        outputQueue.synchronized {
+          outputQueue.wait()
+        }
+      sendMessagesFromQueue(actorRefs, startId + 1)
+    }
+
+    @tailrec
+    private def ensureDelivery(actorRefs: List[ActorRef[Array[Byte]]], message: T, id: Long): Unit = {
+      implicit val timeout: Timeout     = ackTimeout
+      implicit val scheduler: Scheduler = actorSystem.scheduler
+      val orderedMessage                = (ref: ActorRef[Ack]) => serialise(Ordered(id, message, ref))
+      val failedRecipients              = actorRefs
+        .map(actorRef => (actorRef, Try(Await.result(actorRef ? orderedMessage, 1.seconds))))
+        .collect {
+          case (actorRef, Failure(_))                   => actorRef
+          case (actorRef, Success(ack)) if id != ack.id => actorRef
+        }
+      ensureDelivery(failedRecipients, message, id)
+    }
+
+    override def sendAsync(message: T): Unit = {
+      outputQueue.enqueue(message)
+      outputQueue.synchronized {
+        outputQueue.notify()
+      }
+    }
 
     override def close(): Unit = {}
 
@@ -68,8 +103,42 @@ private[raphtory] class AkkaConnector(actorSystem: ActorSystem[SpawnProtocol.Com
     }
     val topicName               = s"${topic.id}/${topic.subTopic}"
     implicit val ec             = actorSystem.executionContext
-    AkkaEndPoint(Future(queryServiceKeyActors(serviceKey, numActors)), topicName)
+    new AkkaEndPoint(Future(queryServiceKeyActors(serviceKey, numActors)), topicName)
   }
+
+  private def orderedReceiver[T](
+      messageHandler: T => Unit,
+      expectedId: Long,
+      componentId: String
+  ): Behavior[Array[Byte]] =
+    Behaviors.receiveMessage[Array[Byte]] { message =>
+      logger.trace(s"Processing message by component $componentId")
+      try {
+        val value = deserialise[Any](message)
+        value match {
+          case StopActor                         =>
+            logger.debug(s"Closing akka listener for component $componentId")
+            Behaviors.stopped[Array[Byte]]
+          case Ordered(id, message: T, actorRef) =>
+            if (id == expectedId) {
+              messageHandler.apply(message)
+              actorRef ! Ack(id)
+              orderedReceiver(messageHandler, expectedId + 1, componentId)
+            }
+            else
+              Behaviors.same[Array[Byte]]
+          case msg                               =>
+            logger.error(s"Unrecognized message $msg")
+            Behaviors.same[Array[Byte]]
+        }
+      }
+      catch {
+        case e: Exception =>
+          e.printStackTrace()
+          logger.error(s"Component $componentId: Failed to handle message. ${e.getMessage}")
+          throw e
+      }
+    }
 
   override def register[T](
       id: String,
@@ -82,30 +151,7 @@ private[raphtory] class AkkaConnector(actorSystem: ActorSystem[SpawnProtocol.Com
       topics foreach { topic =>
         context.system.receptionist ! Receptionist.Register(getServiceKey(topic), context.self)
       }
-      Behaviors.receiveMessage[Array[Byte]] { message =>
-        logger.trace(s"Processing message by component $id")
-        val nextBehavior =
-          try {
-            val value = deserialise[Any](message)
-            if (value.isInstanceOf[StopActor.type]) {
-              logger.debug(s"Closing akka listener for component $id")
-              Behaviors.stopped[Array[Byte]]
-            }
-            else {
-              messageHandler.apply(value.asInstanceOf[T])
-              Behaviors.same[Array[Byte]]
-            }
-          }
-          catch {
-            case e: Exception =>
-              e.printStackTrace()
-              logger.error(s"Component $id: Failed to handle message. ${e.getMessage}")
-              throw e
-          }
-          finally Behaviors.same[Array[Byte]]
-
-        nextBehavior
-      }
+      orderedReceiver(messageHandler, 0, id)
     }
     new CancelableListener {
       var futureSelf: Option[Future[ActorRef[Array[Byte]]]] = None
