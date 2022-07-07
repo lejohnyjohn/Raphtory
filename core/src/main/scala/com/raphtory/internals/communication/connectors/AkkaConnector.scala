@@ -1,9 +1,12 @@
 package com.raphtory.internals.communication.connectors
 
+import akka.actor.Cancellable
 import akka.actor.typed._
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.receptionist.ServiceKey
 import akka.actor.typed.scaladsl.AskPattern.Askable
+import akka.actor.typed.scaladsl.AbstractBehavior
+import akka.actor.typed.scaladsl.ActorContext
 import akka.actor.typed.scaladsl.Behaviors
 import akka.util.Timeout
 import cats.effect.Resource
@@ -23,38 +26,126 @@ import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
 
 import java.net.InetAddress
+import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import scala.annotation.tailrec
+import scala.collection.mutable
 import scala.concurrent.Await
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 import scala.concurrent.duration.DurationInt
 import scala.util.Try
 
-private case object StopActor
+sealed trait ReliableProtocolCommand
+sealed trait SenderCommand                    extends ReliableProtocolCommand
+case class EnsureDelivery(count: Long)        extends SenderCommand
+case class Ack(count: Long, recipientId: Int) extends SenderCommand
+case class SendRequest(message: Array[Byte])  extends SenderCommand
+
+sealed trait ReceiverCommand  extends ReliableProtocolCommand
+private case object StopActor extends ReceiverCommand
+
+case class Ordered(
+    count: Long,
+    message: Array[Byte],
+    senderId: UUID,
+    recipientId: Int,
+    replyTo: ActorRef[SenderCommand]
+) extends ReceiverCommand
 
 private[raphtory] class AkkaConnector(actorSystem: ActorSystem[SpawnProtocol.Command]) extends Connector {
   private val logger: Logger                              = Logger(LoggerFactory.getLogger(this.getClass))
+  private val kryo                                        = KryoSerialiser()
   private val akkaReceptionistRegisteringTimeout: Timeout = 1.seconds
   private val akkaSpawnerTimeout: Timeout                 = 1.seconds
   private val akkaReceptionistFindingTimeout: Timeout     = 1.seconds
-  private val kryo: KryoSerialiser                        = KryoSerialiser()
+  private val selfResolutionTimeout: Duration             = 1.seconds
+  private val ackTimeout: Timeout                         = 1.seconds
 
-  case class AkkaEndPoint[T](actorRefs: Future[Set[ActorRef[Array[Byte]]]], topic: String) extends EndPoint[T] {
-    private val endPointResolutionTimeout: Duration = 60.seconds
+  class ReliableSender(
+      recipients: List[ActorRef[ReceiverCommand]],
+      context: ActorContext[SenderCommand],
+      topicName: String
+  ) extends AbstractBehavior[SenderCommand](context) {
+    private val ackTimeout                = 1.seconds
+    private val recipientsWithIndexes     = recipients zipWithIndex
+    private val buffer                    = mutable.Map[Long, Array[Byte]]()
+    private val numberOfMessagesDelivered = mutable.ArraySeq.fill(recipients.size)(0L)
+    private val senderId                  = UUID.randomUUID()
 
-    override def sendAsync(message: T): Unit           =
-      try Await.result(actorRefs, endPointResolutionTimeout) foreach (_ ! serialise(message))
-      catch {
-        case e: concurrent.TimeoutException =>
-          val msg =
-            s"Impossible to connect to topic '$topic' through Akka. Maybe some components weren't successfully deployed"
-          logger.error(msg)
-          throw new Exception(msg, e)
+    private var numberOfMessagesSent           = 0L
+    private var numberOfMessagesDeliveredToAll = numberOfMessagesDelivered.min
+    private var recheck: Option[Cancellable]   = None
+
+    override def onMessage(msg: SenderCommand): Behavior[SenderCommand] = {
+      msg match {
+        case SendRequest(message)        =>
+          numberOfMessagesSent += 1
+          buffer.addOne(numberOfMessagesSent, message)
+          recipientsWithIndexes foreach {
+            case (recipient, index) =>
+              recipient ! Ordered(numberOfMessagesSent, message, senderId, index, context.self)
+          }
+          scheduleRecheck(context, numberOfMessagesSent)
+        case Ack(count, recipientId)     =>
+          logger.info(s"received ACK from recipient $recipientId for count $count and topic $topicName")
+          if (numberOfMessagesDelivered(recipientId) < count)
+            numberOfMessagesDelivered(recipientId) = count
+          val numberOfMessagesDeliveredToAllUpdated = numberOfMessagesDelivered.min
+          val messagesToDrop                        = (numberOfMessagesDeliveredToAll + 1) to numberOfMessagesDeliveredToAllUpdated
+          buffer.subtractAll(messagesToDrop)
+          numberOfMessagesDeliveredToAll = numberOfMessagesDeliveredToAllUpdated
+        case EnsureDelivery(globalCount) =>
+          if (numberOfMessagesDeliveredToAll < globalCount) {
+            logger.info(
+                    s"Oldest pending $numberOfMessagesDeliveredToAll is lower or equal to the expected count $globalCount after one second for topic $topicName"
+            )
+            val remainingIndexes = numberOfMessagesDelivered.zipWithIndex collect {
+              case (count, id) if count < globalCount => id
+            }
+            remainingIndexes foreach { index =>
+              val messageToSend = numberOfMessagesDeliveredToAll + 1
+              recipients(index) ! Ordered(messageToSend, buffer(messageToSend), senderId, index, context.self)
+            }
+            scheduleRecheck(context, numberOfMessagesSent)
+          }
+          else
+            logger.info(s"Ensured the delivery of $globalCount messages in topic $topicName")
       }
+      this
+    }
 
+    private def scheduleRecheck(context: ActorContext[SenderCommand], numberOfMessages: Long): Unit = {
+      recheck foreach (_.cancel())
+      recheck = Some(context.scheduleOnce(ackTimeout, context.self, EnsureDelivery(numberOfMessages)))
+    }
+  }
+
+  object ReliableSender {
+
+    def apply[T](actorRefs: Future[Set[ActorRef[ReceiverCommand]]], topicName: String): Behavior[SenderCommand] =
+      Behaviors.setup[SenderCommand] { context =>
+        val endPointResolutionTimeout: Duration = 60.seconds
+        val recipients = {
+          try Await.result(actorRefs, endPointResolutionTimeout).toList
+          catch {
+            case e: concurrent.TimeoutException =>
+              val msg =
+                s"Impossible to connect to topic '$topicName' through Akka. Maybe some components weren't successfully deployed"
+              logger.error(msg)
+              throw new Exception(msg, e)
+          }
+        }
+        logger.info(s"Recipients obtained for topic $topicName")
+        new ReliableSender(recipients, context, topicName)
+      }
+  }
+
+  class AkkaEndPoint[T](actorRefs: Future[Set[ActorRef[ReceiverCommand]]], topicName: String) extends EndPoint[T] {
+    private val reliableSender = spawnBehaviorAndWait(ReliableSender[T](actorRefs, topicName), "")
+
+    override def sendAsync(message: T): Unit           = reliableSender ! SendRequest(kryo.serialise(message))
     override def close(): Unit = {}
-
     override def flushAsync(): CompletableFuture[Void] = CompletableFuture.completedFuture(null)
     override def closeWithMessage(message: T): Unit    = sendAsync(message)
   }
@@ -68,68 +159,87 @@ private[raphtory] class AkkaConnector(actorSystem: ActorSystem[SpawnProtocol.Com
     }
     val topicName               = s"${topic.id}/${topic.subTopic}"
     implicit val ec             = actorSystem.executionContext
-    AkkaEndPoint(Future(queryServiceKeyActors(serviceKey, numActors)), topicName)
+    new AkkaEndPoint(Future(queryServiceKeyActors(serviceKey, numActors)), topicName)
+  }
+
+  class OrderedReceiver[T](messageHandler: T => Unit, context: ActorContext[ReceiverCommand], componentId: String)
+          extends AbstractBehavior[ReceiverCommand](context) {
+
+    private val expectedCounts = mutable.Map[UUID, Long]()
+
+    override def onMessage(msg: ReceiverCommand): Behavior[ReceiverCommand] = {
+      logger.trace(s"Processing message by component $componentId")
+      try msg match {
+        case StopActor                                               =>
+          logger.debug(s"Closing akka listener for component $componentId")
+          Behaviors.stopped[ReceiverCommand]
+        case Ordered(count, message, senderId, recipientId, replyTo) =>
+          logger.info(s"message '$message' received by component $componentId from $replyTo")
+          val expectedCount = expectedCounts.getOrElse(senderId, 1)
+          if (count == expectedCount) {
+            messageHandler.apply(kryo.deserialise(message))
+            logger.info(s"message handled by component $componentId from $replyTo. Sending ACK")
+            replyTo ! Ack(count, recipientId)
+            expectedCounts(senderId) = count + 1
+          }
+          else
+            logger.info(
+                    s"message received by component $componentId from $replyTo had unexpected id $count (should have been $expectedCount)"
+            )
+          this
+        case msg                                                     =>
+          logger.error(s"Unrecognized message $msg")
+          this
+      }
+      catch {
+        case e: Exception =>
+          e.printStackTrace()
+          logger.error(s"Component $componentId: Failed to handle message. ${e.getMessage}")
+          throw e
+      }
+    }
+  }
+
+  object OrderedReceiver {
+
+    def apply[T](
+        componentId: String,
+        messageHandler: T => Unit,
+        topics: Seq[CanonicalTopic[T]]
+    ): Behavior[ReceiverCommand] =
+      Behaviors.setup[ReceiverCommand] { context =>
+        implicit val timeout: Timeout     = akkaReceptionistRegisteringTimeout
+        implicit val scheduler: Scheduler = context.system.scheduler
+        topics foreach { topic =>
+          context.system.receptionist ! Receptionist.Register(getServiceKey(topic), context.self)
+        }
+        new OrderedReceiver(messageHandler, context, componentId)
+      }
   }
 
   override def register[T](
-      id: String,
+      componentId: String,
       messageHandler: T => Unit,
       topics: Seq[CanonicalTopic[T]]
   ): CancelableListener = {
-    val behavior = Behaviors.setup[Array[Byte]] { context =>
-      implicit val timeout: Timeout     = akkaReceptionistRegisteringTimeout
-      implicit val scheduler: Scheduler = context.system.scheduler
-      topics foreach { topic =>
-        context.system.receptionist ! Receptionist.Register(getServiceKey(topic), context.self)
-      }
-      Behaviors.receiveMessage[Array[Byte]] { message =>
-        logger.trace(s"Processing message by component $id")
-        val nextBehavior =
-          try {
-            val value = deserialise[Any](message)
-            if (value.isInstanceOf[StopActor.type]) {
-              logger.debug(s"Closing akka listener for component $id")
-              Behaviors.stopped[Array[Byte]]
-            }
-            else {
-              messageHandler.apply(value.asInstanceOf[T])
-              Behaviors.same[Array[Byte]]
-            }
-          }
-          catch {
-            case e: Exception =>
-              e.printStackTrace()
-              logger.error(s"Component $id: Failed to handle message. ${e.getMessage}")
-              throw e
-          }
-          finally Behaviors.same[Array[Byte]]
-
-        nextBehavior
-      }
-    }
+    val behavior = OrderedReceiver(componentId, messageHandler, topics)
     new CancelableListener {
-      var futureSelf: Option[Future[ActorRef[Array[Byte]]]] = None
-      override def start(): Unit = {
-        implicit val timeout: Timeout     = akkaSpawnerTimeout
-        implicit val scheduler: Scheduler = actorSystem.scheduler
-        val spawnRequestBuilder           = (ref: ActorRef[ActorRef[Array[Byte]]]) =>
-          SpawnProtocol.Spawn(behavior, id, Props.empty, ref)
-        futureSelf = Some(actorSystem ? spawnRequestBuilder)
-      }
+      var futureSelf: Option[Future[ActorRef[ReceiverCommand]]] = None
+      override def start(): Unit                                = futureSelf = Some(spawnBehavior(behavior, componentId))
 
       override def close(): Unit =
         futureSelf.foreach { futureSelf =>
           val selfResolutionTimeout: Duration = 10.seconds
-          Await.result(futureSelf, selfResolutionTimeout) ! serialise(StopActor)
+          Await.result(futureSelf, selfResolutionTimeout) ! StopActor
         }
     }
   }
 
   @tailrec
   private def queryServiceKeyActors(
-      serviceKey: ServiceKey[Array[Byte]],
+      serviceKey: ServiceKey[ReceiverCommand],
       numActors: Int
-  ): Set[ActorRef[Array[Byte]]] = {
+  ): Set[ActorRef[ReceiverCommand]] = {
     implicit val scheduler: Scheduler = actorSystem.scheduler
     implicit val timeout: Timeout     = akkaReceptionistFindingTimeout
     val futureListing                 = actorSystem.receptionist ? Receptionist.Find(serviceKey)
@@ -147,11 +257,20 @@ private[raphtory] class AkkaConnector(actorSystem: ActorSystem[SpawnProtocol.Com
       queryServiceKeyActors(serviceKey, numActors)
   }
 
-  private def getServiceKey[T](topic: Topic[T]) =
-    ServiceKey[Array[Byte]](s"${topic.id}-${topic.subTopic}")
+  def spawnBehavior[T](behavior: Behavior[T], name: String): Future[ActorRef[T]] = {
+    implicit val timeout: Timeout     = akkaSpawnerTimeout
+    implicit val scheduler: Scheduler = actorSystem.scheduler
+    val spawnRequestBuilder           = (ref: ActorRef[ActorRef[T]]) => SpawnProtocol.Spawn(behavior, name, Props.empty, ref)
+    actorSystem ? spawnRequestBuilder
+  }
 
-  private def deserialise[T](bytes: Array[Byte]): T = kryo.deserialise[T](bytes)
-  private def serialise(value: Any): Array[Byte]    = kryo.serialise(value)
+  def spawnBehaviorAndWait[T](behavior: Behavior[T], name: String): ActorRef[T] = {
+    val futureSelf = spawnBehavior(behavior, name)
+    Await.result(futureSelf, selfResolutionTimeout)
+  }
+
+  private def getServiceKey[T](topic: Topic[T]) =
+    ServiceKey[ReceiverCommand](s"${topic.id}-${topic.subTopic}")
 
   override def shutdown(): Unit = {}
 }
