@@ -29,6 +29,8 @@ object NeighbourNames extends Generic {
     graph
       .step(vertex => vertex.messageAllNeighbours((vertex.ID, vertex.name())))
       .step { vertex =>
-        vertex.setState("neighbourNames", vertex.messageQueue[(vertex.IDType, String)].toMap)
+        val map = vertex.messageQueue[(vertex.IDType, String)].toMap
+        vertex.setState("neighbourNames", map)
+//        println(map)
       }
 }

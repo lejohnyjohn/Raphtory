@@ -52,7 +52,7 @@ private[raphtory] class SpoutExecutor[T](
   private def executeSpout() = {
     spoutReschedulesCount.inc()
     while (spout.hasNext) {
-      fileLinesSent.inc()
+//      fileLinesSent.inc()
       linesProcessed = linesProcessed + 1
       if (linesProcessed % 100_000 == 0)
         logger.debug(s"Spout: sent $linesProcessed messages.")

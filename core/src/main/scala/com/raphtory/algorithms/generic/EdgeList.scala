@@ -43,17 +43,21 @@ class EdgeList(
       .explodeSelect { vertex =>
         val neighbourMap = vertex.getState[Map[vertex.IDType, String]]("neighbourNames")
         val name         = vertex.name()
-        vertex.outEdges
-          .map { edge =>
-            val row = name +:
-              neighbourMap(edge.dst) +: // get name of neighbour
-              properties // get property values
-                .map(key =>
-                  edge
-                    .getPropertyOrElse(key, defaults.getOrElse(key, None))
-                )
-            Row(row: _*)
-          }
+        if (neighbourMap.nonEmpty)
+          vertex.outEdges
+            .map { edge =>
+              val row = name +:
+                neighbourMap(edge.dst) +: // get name of neighbour
+                properties // get property values
+                  .map(key =>
+                    edge
+                      .getPropertyOrElse(key, defaults.getOrElse(key, None))
+                  )
+
+              Row(row: _*)
+            }
+        else
+          List.empty
       }
 }
 

@@ -1,8 +1,12 @@
 package com.raphtory.examples.coho.companiesStream
 
+import com.amazonaws.auth.AWSStaticCredentialsProvider
+import com.amazonaws.services.s3.model.{ListObjectsRequest, ObjectListing}
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3ClientBuilder}
 import com.raphtory.Raphtory
 import com.raphtory.algorithms.generic.EdgeList
-import com.raphtory.examples.coho.companiesStream.graphbuilders.{CompaniesStreamPersonGraphBuilder, CompaniesStreamRawGraphBuilder}
+import com.raphtory.aws.{AwsCredentials, AwsS3Connector, AwsS3Spout, AwsSessionCredentials}
+import com.raphtory.examples.coho.companiesStream.graphbuilders.companies.{CompaniesStreamPersonGraphBuilder, CompaniesStreamRawGraphBuilder}
 import com.raphtory.sinks.FileSink
 import com.raphtory.spouts.WebSocketSpout
 
@@ -16,10 +20,10 @@ import com.raphtory.spouts.WebSocketSpout
 object Runner extends App {
 
   val raphtoryConfig               = Raphtory.getDefaultConfig()
-  private val auth = raphtoryConfig.getString("raphtory.spout.coho.authorization")
-  private val contentType = raphtoryConfig.getString("raphtory.spout.coho.contentType")
-  private val url = raphtoryConfig.getString("raphtory.spout.coho.url")
-  val source = new WebSocketSpout(url, Some(auth), Some(contentType))
+//  private val auth = raphtoryConfig.getString("raphtory.spout.coho.authorization")
+//  private val contentType = raphtoryConfig.getString("raphtory.spout.coho.contentType")
+//  private val url = raphtoryConfig.getString("raphtory.spout.coho.url")
+  val source = new AwsS3Spout("pometry-data", "CompaniesHouse")
 //  val builder = new CompaniesStreamRawGraphBuilder()
   val builder = new CompaniesStreamPersonGraphBuilder()
   val graph = Raphtory.stream(spout = source, graphBuilder = builder)
@@ -31,4 +35,7 @@ object Runner extends App {
     .execute(EdgeList())
     .writeTo(output)
     .waitForJob()
+
+
+
 }
