@@ -11,7 +11,7 @@ import com.raphtory.spouts.FileSpout
  * Also requires bucket to output results into. Both set in application.conf.
  */
 
-object AwsSpoutTest extends App {
+object AwsSpoutTest {
 
 //  val config = Raphtory.getDefaultConfig()
 //  val awsS3SpoutBucketName = config.getString("raphtory.spout.aws.local.spoutBucketName")
@@ -19,7 +19,9 @@ object AwsSpoutTest extends App {
   //    val awsS3OutputFormatBucketName = config.getString("raphtory.spout.aws.local.outputBucketName")
 
 //      val source               = AwsS3Spout("pometry-data","CompaniesHouse")
-  val source = FileSpout("/home/ubuntu/CompaniesHouse/", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
+def main(args: Array[String]) {
+
+  val source = FileSpout("/home/ubuntu/AWSCompany", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
   val builder = new OfficerToCompanyGraphBuilder()
   val output = FileSink("/tmp/coho")
   val graph = Raphtory.load[String](source, builder)
@@ -37,5 +39,6 @@ object AwsSpoutTest extends App {
   //        ExitCode.Success
   //      }
   //    }
+}
 
 }
