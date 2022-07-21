@@ -33,6 +33,7 @@ def main(args: Array[String]) {
     graph
       .execute(VertexFilter(vertex => vertex.outDegree > 100))
       .writeTo(output)
+      .waitForJob()
 
   }
   //    Raphtory.streamIO(spout = source, graphBuilder = builder).use { graph =>
