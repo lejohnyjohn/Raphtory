@@ -1,7 +1,7 @@
 package com.raphtory.aws
 
 import com.raphtory.Raphtory
-import com.raphtory.algorithms.filters.VertexFilter
+import com.raphtory.algorithms.filters.{EdgeFilter, VertexFilter, VertexFilterGraphState}
 import com.raphtory.algorithms.generic.EdgeList
 import com.raphtory.algorithms.generic.centrality.{Degree, PageRank}
 import com.raphtory.aws.graphbuilders.officers.OfficerToCompanyGraphBuilder
@@ -31,7 +31,7 @@ def main(args: Array[String]) {
   val output = FileSink("/tmp/test")
   val graph = Raphtory.load[String](source, builder)
     graph
-      .execute(EdgeList() -> VertexFilter(vertex => vertex.outDegree > 100))
+      .execute(VertexFilter(vertex => vertex.outDegree > 100) -> Degree)
       .writeTo(output)
       .waitForJob()
 
