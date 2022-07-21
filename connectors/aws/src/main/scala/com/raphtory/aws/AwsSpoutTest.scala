@@ -29,11 +29,11 @@ def main(args: Array[String]) {
 //  val source = FileSpout("/Users/rachelchan/Downloads/CompaniesHouse/", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
   val builder = new OfficerToCompanyGraphBuilder()
   val output = FileSink("/tmp/test")
-
-  Using(Raphtory.load[String](source, builder)) { graph =>
+  val graph = Raphtory.load[String](source, builder)
     graph
       .execute(VertexFilter(vertex => vertex.outDegree > 100))
       .writeTo(output)
+
   }
   //    Raphtory.streamIO(spout = source, graphBuilder = builder).use { graph =>
   //      IO {
