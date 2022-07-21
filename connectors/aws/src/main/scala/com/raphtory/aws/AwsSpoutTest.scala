@@ -32,7 +32,6 @@ def main(args: Array[String]) {
     graph
       .execute(FilteredOutDegree())
       .writeTo(output)
-      .waitForJob()
   }
   //    Raphtory.streamIO(spout = source, graphBuilder = builder).use { graph =>
   //      IO {
