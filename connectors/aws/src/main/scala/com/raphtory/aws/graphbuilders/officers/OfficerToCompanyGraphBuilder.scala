@@ -20,32 +20,32 @@ class OfficerToCompanyGraphBuilder extends GraphBuilder[String] {
 
     def sendAppointmentListToPartitions(
                                          appointmentList: OfficerAppointmentList): Unit = {
-      val officerId = appointmentList.links.get.self.get.split("/")(2).hashCode
+      val officerId = appointmentList.links.get.self.get.split("/")(2)
 
 
       appointmentList.items.get.foreach { item =>
           if (item.appointed_on.nonEmpty && item.appointed_to.nonEmpty) {
-            val companyNumber = item.appointed_to.get.company_number.get.hashCode
+            val companyNumber = item.appointed_to.get.company_number.get
             val convertedCurrentDate =
               LocalDate.parse(item.appointed_on.get.replaceAll("\"", ""), DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochSecond(LocalTime.MIDNIGHT, ZoneOffset.MIN)
             addVertex(
               convertedCurrentDate,
-              officerId,
-              Properties(ImmutableProperty("name", officerId.toString)),
+              assignID(officerId),
+              Properties(ImmutableProperty("name", officerId)),
               Type("Officer ID")
             )
 
             addVertex(
               convertedCurrentDate,
-              companyNumber,
-              Properties(ImmutableProperty("name", companyNumber.toString)),
+              assignID(companyNumber),
+              Properties(ImmutableProperty("name", companyNumber)),
               Type("Company Number")
             )
 
             addEdge(
               convertedCurrentDate,
-              officerId,
-              companyNumber,
+              assignID(officerId),
+              assignID(companyNumber),
               Type("Company to Officer")
             )
 
