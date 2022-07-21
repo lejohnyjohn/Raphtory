@@ -23,10 +23,10 @@ def main(args: Array[String]) {
 
   val source = FileSpout("/home/ubuntu/AWSCompany", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
   val builder = new OfficerToCompanyGraphBuilder()
-  val output = FileSink("/tmp/coho")
+  val output = FileSink("/tmp/test")
   val graph = Raphtory.load[String](source, builder)
   graph
-    .execute(EdgeList())
+    .execute(FilteredOutDegree())
     .writeTo(output)
   //    Raphtory.streamIO(spout = source, graphBuilder = builder).use { graph =>
   //      IO {
