@@ -9,8 +9,11 @@ class FilteredOutDegree extends NodeList(Seq("filteredOutDegree")) {
   override def apply(graph: GraphPerspective): graph.Graph = OutDegree(graph)
 
   override def tabularise(graph: GraphPerspective): Table =
-    graph.explodeSelect { vertex =>
-       vertex.getState("filteredOutDegree")
+    graph.select { vertex =>
+       Row(
+         vertex.ID,
+         vertex.getState("filteredOutDegree")
+       )
     }
 }
 
