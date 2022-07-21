@@ -1,7 +1,9 @@
 package com.raphtory.aws
 
 import com.raphtory.Raphtory
+import com.raphtory.algorithms.filters.VertexFilter
 import com.raphtory.algorithms.generic.EdgeList
+import com.raphtory.algorithms.generic.centrality.{Degree, PageRank}
 import com.raphtory.aws.graphbuilders.officers.OfficerToCompanyGraphBuilder
 import com.raphtory.sinks.FileSink
 import com.raphtory.spouts.FileSpout
@@ -30,7 +32,7 @@ def main(args: Array[String]) {
 
   Using(Raphtory.load[String](source, builder)) { graph =>
     graph
-      .execute(FilteredOutDegree())
+      .execute(VertexFilter(vertex => vertex.outDegree > 100))
       .writeTo(output)
   }
   //    Raphtory.streamIO(spout = source, graphBuilder = builder).use { graph =>
