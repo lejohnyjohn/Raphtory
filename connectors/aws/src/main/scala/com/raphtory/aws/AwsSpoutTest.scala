@@ -6,6 +6,8 @@ import com.raphtory.aws.graphbuilders.officers.OfficerToCompanyGraphBuilder
 import com.raphtory.sinks.FileSink
 import com.raphtory.spouts.FileSpout
 
+import scala.util.Using
+
 /**
  * Tests the AWS S3 Spout and Sink, requires bucket name and bucket path that you would like to ingest.
  * Also requires bucket to output results into. Both set in application.conf.
@@ -22,12 +24,16 @@ object AwsSpoutTest {
 def main(args: Array[String]) {
 
   val source = FileSpout("/home/ubuntu/AWSCompany", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
+//  val source = FileSpout("/Users/rachelchan/Downloads/CompaniesHouse/", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
   val builder = new OfficerToCompanyGraphBuilder()
   val output = FileSink("/tmp/test")
-  val graph = Raphtory.load[String](source, builder)
-  graph
-    .execute(FilteredOutDegree())
-    .writeTo(output)
+
+  Using(Raphtory.load[String](source, builder)) { graph =>
+    graph
+      .execute(FilteredOutDegree())
+      .writeTo(output)
+      .waitForJob()
+  }
   //    Raphtory.streamIO(spout = source, graphBuilder = builder).use { graph =>
   //      IO {
   //        graph
