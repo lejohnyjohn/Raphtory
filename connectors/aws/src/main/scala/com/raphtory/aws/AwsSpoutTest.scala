@@ -39,7 +39,7 @@ def main(args: Array[String]) {
       })
 
           -> VertexFilter(vertex => {
-            vertex.Type() == "Officer ID" || vertex.Type() == "Company Number" && vertex.outDegree > 2
+            vertex.Type() == "Officer ID" || vertex.Type() == "Company Number" && vertex.outDegree > 1
           })
           -> EdgeList()
       )
