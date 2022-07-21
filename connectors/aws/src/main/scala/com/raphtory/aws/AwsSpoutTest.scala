@@ -36,12 +36,12 @@ def main(args: Array[String]) {
         // filter for officers with outdegree > 100 but keep all companies
         VertexFilter(vertex => {
         vertex.Type() == "Officer ID" && vertex.outDegree > 100 || vertex.Type() == "Company Number"
-      }) -> EdgeList()
-//
-//          -> VertexFilter(vertex => {
-//            vertex.Type() == "Officer ID" || vertex.Type() == "Company Number" && vertex.outDegree > 100
-//          })
+      })
 
+          -> VertexFilter(vertex => {
+            vertex.Type() == "Officer ID" || vertex.Type() == "Company Number" && vertex.outDegree > 100
+          })
+          -> EdgeList()
       )
       .writeTo(output)
       .waitForJob()
