@@ -32,7 +32,17 @@ def main(args: Array[String]) {
   val output = FileSink("/tmp/test")
   val graph = Raphtory.load[String](source, builder)
     graph
-      .execute(VertexFilter(vertex => vertex.outDegree > 5) -> EdgeList())
+      .execute(
+        // filter for officers with outdegree > 100 but keep all companies
+        VertexFilter(vertex => {
+        vertex.Type() == "Officer ID" && vertex.outDegree > 100 || vertex.Type() == "Company Number"
+      }) -> EdgeList()
+//
+//          -> VertexFilter(vertex => {
+//            vertex.Type() == "Officer ID" || vertex.Type() == "Company Number" && vertex.outDegree > 100
+//          })
+
+      )
       .writeTo(output)
       .waitForJob()
 
