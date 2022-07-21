@@ -31,7 +31,8 @@ def main(args: Array[String]) {
   val output = FileSink("/tmp/test")
   val graph = Raphtory.load[String](source, builder)
     graph
-      .execute(EdgeList() -> VertexFilter(vertex => vertex.outDegree > 100))
+//      .execute(VertexFilter(vertex => vertex.outDegree > 100))
+      .execute(EdgeList())
       .writeTo(output)
       .waitForJob()
 
