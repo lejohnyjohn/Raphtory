@@ -5,6 +5,7 @@ import com.raphtory.algorithms.filters.{EdgeFilter, VertexFilter, VertexFilterGr
 import com.raphtory.algorithms.generic.EdgeList
 import com.raphtory.algorithms.generic.centrality.{Degree, PageRank}
 import com.raphtory.api.analysis.table.Row
+import com.raphtory.api.input.ImmutableProperty
 import com.raphtory.aws.graphbuilders.officers.OfficerToCompanyGraphBuilder
 import com.raphtory.sinks.FileSink
 import com.raphtory.spouts.FileSpout
@@ -27,21 +28,16 @@ object AwsSpoutTest {
 def main(args: Array[String]) {
 
   val source = FileSpout("/home/ubuntu/AWSCompany", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
-//  val source = FileSpout("/Users/rachelchan/Downloads/CompaniesHouse/", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
   val builder = new OfficerToCompanyGraphBuilder()
-  val output = FileSink("/tmp/test")
+  val output = FileSink("/tmp/dodgydirectors")
   val graph = Raphtory.load[String](source, builder)
     graph
       .execute(
-        // filter for officers with outdegree > 100 but keep all companies
-        VertexFilter(vertex => {
-        vertex.Type() == "Officer ID" && vertex.outDegree > 50000 || vertex.Type() == "Company Number"
-      })
-
-//          -> VertexFilter(vertex => {
-//            vertex.Type() == "Officer ID" || vertex.Type() == "Company Number" && vertex.outDegree > 1
-//          })
-          -> EdgeList()
+//        VertexFilter(vertex => {
+//        vertex.Type() == "Officer ID" && vertex.outDegree > 50000 || vertex.Type() == "Company Number"
+//      })
+//          ->
+      EdgeList()
       )
       .writeTo(output)
       .waitForJob()
