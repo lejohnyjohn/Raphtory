@@ -21,51 +21,73 @@ class OfficerToCompanyGraphBuilder extends GraphBuilder[String] {
     def sendAppointmentListToPartitions(
                                          appointmentList: OfficerAppointmentList): Unit = {
       val officerId = appointmentList.links.get.self.get.split("/")(2)
-     officerId match {
-       case "SBjtBss_I4XEupbfAUXoeAkMcIk" => createVertices()
-       case "Yg4rTn5QucYg_hJOxGTnx3B51WY" => createVertices()
-       case "C7trUnW0xAvzpaSmVXVviwNi2BY" => createVertices()
-       case "8d_bnTiwfxh8JIr3YfuwkmkWkCg" => createVertices()
-       case "xLPL0PBzn14BtfuhzOZQswj4AoM" => createVertices()
-       case "aDjhOpnMaB_uAHDxRnMLWpa9C-I" => createVertices()
-     }
 
-      def createVertices() = {
+
         appointmentList.items.get.foreach { item =>
           if (item.appointed_on.nonEmpty && item.appointed_to.nonEmpty) {
             val companyNumber = item.appointed_to.get.company_number.get
-            val appointedOn = item.appointed_on.get
-            val resignedOn = item.resigned_on.get
-
+            val resignedOnParsed =
+              LocalDate.parse(item.resigned_on.get.replaceAll("\"", ""), DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochSecond(LocalTime.MIDNIGHT, ZoneOffset.MIN)
+            val appointedOn =
+              item.appointed_on.get
+            val resignedOn =
+              item.resigned_on.get
             val convertedCurrentDate =
               LocalDate.parse(item.appointed_on.get.replaceAll("\"", ""), DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochSecond(LocalTime.MIDNIGHT, ZoneOffset.MIN)
 
-            addVertex(
-              convertedCurrentDate,
-              assignID(officerId),
-              Properties(ImmutableProperty("name", officerId)),
-              Type("Officer ID")
-            )
+            if (appointedOn == resignedOn) {
+              addVertex(
+                convertedCurrentDate,
+                assignID(officerId),
+                Properties(ImmutableProperty("name", officerId)),
+                Type("Officer ID")
+              )
+              addVertex(
+                convertedCurrentDate,
+                assignID(companyNumber),
+                Properties(ImmutableProperty("name", companyNumber)),
+                Type("Company Number")
+              )
+              addEdge(
+                convertedCurrentDate,
+                assignID(officerId),
+                assignID(companyNumber),
+                Type("Officer to Company")
+              )
+            }
 
-            addVertex(
-              convertedCurrentDate,
-              assignID(companyNumber),
-              Properties(
-                ImmutableProperty("name", companyNumber),
-                StringProperty("appointed on", appointedOn),
-                StringProperty("resigned on", resignedOn)),
-              Type("Company Number")
-            )
 
-            addEdge(
-              convertedCurrentDate,
-              assignID(officerId),
-              assignID(companyNumber),
-              Type("Company to Officer")
-            )
+
+//            addVertex(
+//              convertedCurrentDate,
+//              convertedCurrentDate,
+//              Properties(ImmutableProperty("name", companyNumber)),
+//              Type("appointed on")
+//            )
+//
+//            addVertex(
+//              resignedOnParsed,
+//              resignedOnParsed,
+//              Properties(ImmutableProperty("name", companyNumber)),
+//              Type("resigned on")
+//            )
+
+//            addEdge(
+//              convertedCurrentDate,
+//              convertedCurrentDate,
+//              resignedOnParsed,
+//              Type("Assigned date to resigned on date")
+//            )
+//
+//            addEdge(
+//              convertedCurrentDate,
+//              assignID(officerId),
+//              resignedOnParsed,
+//              Type("Officer to resigned on date")
+//            )
           }
         }
       }
-    }
+
   }
 }
