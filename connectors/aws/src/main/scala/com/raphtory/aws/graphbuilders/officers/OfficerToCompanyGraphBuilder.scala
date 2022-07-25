@@ -27,21 +27,23 @@ class OfficerToCompanyGraphBuilder extends GraphBuilder[String] {
           if (item.appointed_on.nonEmpty && item.appointed_to.nonEmpty) {
             val companyNumber = item.appointed_to.get.company_number.get
             val resignedOnParsed =
-              LocalDate.parse(item.resigned_on.get.replaceAll("\"", ""), DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochSecond(LocalTime.MIDNIGHT, ZoneOffset.MIN)
+              LocalDate.parse(item.resigned_on.get.replaceAll("\"", ""), DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochSecond(LocalTime.MIDNIGHT, ZoneOffset.MIN) * 1000
             val appointedOn =
               item.appointed_on.get
             val resignedOn =
               item.resigned_on.get
             val convertedCurrentDate =
-              LocalDate.parse(item.appointed_on.get.replaceAll("\"", ""), DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochSecond(LocalTime.MIDNIGHT, ZoneOffset.MIN)
+              LocalDate.parse(item.appointed_on.get.replaceAll("\"", ""), DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochSecond(LocalTime.MIDNIGHT, ZoneOffset.MIN) * 1000
 
-            if (appointedOn == resignedOn) {
+            val difference = resignedOnParsed - convertedCurrentDate
+
               addVertex(
                 convertedCurrentDate,
                 assignID(officerId),
                 Properties(ImmutableProperty("name", officerId)),
                 Type("Officer ID")
               )
+
               addVertex(
                 convertedCurrentDate,
                 assignID(companyNumber),
@@ -52,9 +54,11 @@ class OfficerToCompanyGraphBuilder extends GraphBuilder[String] {
                 convertedCurrentDate,
                 assignID(officerId),
                 assignID(companyNumber),
+                Properties(LongProperty("weight", difference)),
                 Type("Officer to Company")
               )
-            }
+
+
 
 
 
