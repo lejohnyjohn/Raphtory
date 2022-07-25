@@ -28,14 +28,13 @@ object AwsSpoutTest {
 //      val source               = AwsS3Spout("pometry-data","CompaniesHouse")
 def main(args: Array[String]) {
 
-//  val source = FileSpout("/Users/rachelchan/Documents/DodgyDirectors/", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
   val source = FileSpout("/home/ubuntu/DodgyDirectors", regexPattern = "^.*\\.([jJ][sS][oO][nN]??)$", recurse = true)
   val builder = new OfficerToCompanyGraphBuilder()
   val output = FileSink("/tmp/dodgydirectorswindow")
   val graph = Raphtory.load[String](source, builder)
     graph
-      .range("2006-01-01", "2007-01-01", "1 week")
-      .window("1 day", Alignment.END)
+      .at("2006-01-01")
+      .past()
       .execute(EdgeList())
       .writeTo(output)
       .waitForJob()
