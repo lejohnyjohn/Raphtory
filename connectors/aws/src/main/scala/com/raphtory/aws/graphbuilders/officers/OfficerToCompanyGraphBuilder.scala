@@ -36,33 +36,36 @@ class OfficerToCompanyGraphBuilder extends GraphBuilder[String] {
               LocalDate.parse(item.appointed_on.get.replaceAll("\"", ""), DateTimeFormatter.ofPattern("yyyy-MM-dd")).toEpochSecond(LocalTime.MIDNIGHT, ZoneOffset.MIN) * 1000
 
             val difference = resignedOnParsed - convertedCurrentDate
+            println(s"r: $resignedOnParsed, a: $convertedCurrentDate, cn:  $companyNumber")
 
-              addVertex(
+            addVertex(
                 convertedCurrentDate,
                 assignID(officerId),
                 Properties(ImmutableProperty("name", officerId)),
                 Type("Officer ID")
               )
 
-              addVertex(
-                convertedCurrentDate,
-                assignID(companyNumber),
-                Properties(ImmutableProperty("name", companyNumber)),
-                Type("Company Number")
-              )
-              addEdge(
-                convertedCurrentDate,
-                assignID(officerId),
-                assignID(companyNumber),
-                Properties(LongProperty("weight", difference)),
-                Type("Officer to Company")
-              )
+                addVertex(
+                  convertedCurrentDate,
+                  assignID(companyNumber),
+                  Properties(ImmutableProperty("name", companyNumber)),
+                  Type("Company Number")
+                )
+                addEdge(
+                  convertedCurrentDate,
+                  assignID(officerId),
+                  assignID(companyNumber),
+                  Properties(LongProperty("weight", difference)),
+                  Type("Officer to Company")
+                )
 
 
 
 
 
-//            addVertex(
+
+
+            //            addVertex(
 //              convertedCurrentDate,
 //              convertedCurrentDate,
 //              Properties(ImmutableProperty("name", companyNumber)),

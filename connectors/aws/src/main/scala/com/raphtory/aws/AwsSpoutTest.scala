@@ -32,12 +32,7 @@ def main(args: Array[String]) {
   val builder = new OfficerToCompanyGraphBuilder()
   val output = FileSink("/tmp/dodgydirectorswindow")
   val graph = Raphtory.load[String](source, builder)
-//    graph
-//      .at(368301600, )
-//      .past()
-//      .execute(EdgeList())
-//      .writeTo(output)
-//      .waitForJob()
+
 
   graph
     .range("2000-01-01", "2022-07-25", "1 day")
@@ -47,7 +42,6 @@ def main(args: Array[String]) {
       upper = 100
     ) -> EdgeList())
     .writeTo(output)
-  //    .execute(EdgeList())
 //    .writeTo(output)
 //          VertexFilter(vertex => {
 //          vertex. == "Officer ID" && vertex.outDegree > 50000 || vertex.Type() == "Company Number"
