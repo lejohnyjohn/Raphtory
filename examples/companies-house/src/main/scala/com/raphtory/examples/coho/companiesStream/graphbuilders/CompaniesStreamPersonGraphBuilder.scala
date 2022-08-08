@@ -1,8 +1,8 @@
 package com.raphtory.examples.coho.companiesStream.graphbuilders
 
 import com.raphtory.api.input.{GraphBuilder, ImmutableProperty, Properties, StringProperty, Type}
-import com.raphtory.examples.coho.companiesStream.rawModel.CompaniesHouseJsonProtocol.{CompanyFormat, getField}
-import com.raphtory.examples.coho.companiesStream.rawModel.Company
+import com.raphtory.examples.coho.companiesStream.rawModel.companyProfile.CompaniesHouseJsonProtocol.CompanyFormat
+import com.raphtory.examples.coho.companiesStream.rawModel.companyProfile.Company
 import spray.json._
 import java.text.SimpleDateFormat
 import java.util.Date

@@ -3,9 +3,11 @@ package com.raphtory.examples.coho.companiesStream.graphbuilders
 import com.raphtory.api.input.{BooleanProperty, GraphBuilder, IntegerProperty, Properties, StringProperty}
 import com.raphtory.examples.coho.companiesStream.rawModel._
 import spray.json._
+
 import java.text.SimpleDateFormat
 import java.util.Date
-import com.raphtory.examples.coho.companiesStream.rawModel.CompaniesHouseJsonProtocol.CompanyFormat
+import com.raphtory.examples.coho.companiesStream.rawModel.companyProfile.CompaniesHouseJsonProtocol.CompanyFormat
+import com.raphtory.examples.coho.companiesStream.rawModel.companyProfile.Company
 
 /**
  * The CompaniesStreamRawGraphBuilder sets each json object as a vertex
@@ -15,7 +17,6 @@ import com.raphtory.examples.coho.companiesStream.rawModel.CompaniesHouseJsonPro
 
 class CompaniesStreamRawGraphBuilder extends GraphBuilder[String] {
   private val nullStr = "null"
-
 
   override def parseTuple(tuple: String) = {
     try {

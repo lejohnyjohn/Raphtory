@@ -13,7 +13,7 @@ import com.raphtory.spouts.WebSocketSpout
  * You will need to create an application with a key to get an authorization key to access this resource.
  */
 
-object Runner extends App {
+object CompaniesHouseStreamTest extends App {
 
   val raphtoryConfig               = Raphtory.getDefaultConfig()
   private val auth = raphtoryConfig.getString("raphtory.spout.coho.authorization")
@@ -27,7 +27,7 @@ object Runner extends App {
   Thread.sleep(10000)
   graph
     .climb("2022-12-31", "1 second")
-    .past
+    .past()
     .execute(EdgeList())
     .writeTo(output)
     .waitForJob()
