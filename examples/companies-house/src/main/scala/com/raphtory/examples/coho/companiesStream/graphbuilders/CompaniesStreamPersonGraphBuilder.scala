@@ -21,7 +21,7 @@ class CompaniesStreamPersonGraphBuilder extends GraphBuilder[String] {
       val company = command.parseJson.convertTo[Company]
       sendCompanyToPartitions(company)
     } catch {
-      case e: Exception => e.printStackTrace
+      case e: Exception => e.printStackTrace()
     }
 
     def getTimestamp(dateString: String): Long = {
