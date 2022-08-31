@@ -5,10 +5,11 @@ import com.raphtory.api.analysis.graphview.GraphPerspective
 import com.raphtory.api.analysis.table.{Row, Table}
 
 /*
-
+Init: find the starting node, set EGONET to true as it's in the graph, propagate to it's neighbours
+Iterate:
 * */
 
-class EgoNetwork(name: String = "Gandalf", radius: Int = 2) extends Generic {
+class EgoNetwork(name: String = "Gandalf", radius: Int = 2) extends Generic { // todo change default name
 
   final val EGONET = "in_ego_net"
 
@@ -18,16 +19,14 @@ class EgoNetwork(name: String = "Gandalf", radius: Int = 2) extends Generic {
         if (vertex.getPropertyOrElse("name", "") == name) {
           vertex.messageAllNeighbours(0)
           vertex.setState(EGONET, true)
-        } // else -1?
+        }
       }
       .iterate(
         { vertex =>
           // todo if already in, don't need to show?
-          // take min of received queue and add one
-          // if new curr radius < total radius, propagate
           vertex.setState(EGONET, true)
           val local_radius = vertex.messageQueue[Int].min + 1
-          if (local_radius < radius) { // not done yet, propagate
+          if (local_radius < radius) { // this isn't the outermost layer, propagate
             vertex.messageAllNeighbours(local_radius)
           }
         },
