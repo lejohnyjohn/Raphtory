@@ -9,14 +9,15 @@ Init: find the starting node, set EGONET to true as it's in the graph, propagate
 Iterate:
 * */
 
-class EgoNetwork(name: String = "Gandalf", radius: Int = 2) extends Generic { // todo change default name
-
-  final val EGONET = "in_ego_net"
+class EgoNetwork(center_property: String, center_value: String, radius: Int = 2) extends Generic { // todo change default name
+  // center_property is e.g. "name": a property of the vector that the algorithm will use to find the central node, and center_value is the value of this property
+  final val EGONET = "inEgoNet"
 
   override def apply(graph: GraphPerspective): graph.Graph =
     graph
       .step { vertex =>
-        if (vertex.getPropertyOrElse("name", "") == name) {
+        //vertex.name()
+        if (vertex.name(center_property) == center_value) { // todo add alternative constructor that lets you input the ID instead of a property/value pair
           vertex.messageAllNeighbours(0)
           vertex.setState(EGONET, true)
         }
@@ -30,7 +31,7 @@ class EgoNetwork(name: String = "Gandalf", radius: Int = 2) extends Generic { //
             vertex.messageAllNeighbours(local_radius)
           }
         },
-        iterations = 20, // todo could be radius?
+        iterations = 20, // todo this could be the radius?
         executeMessagedOnly = true
       )
 
@@ -42,5 +43,5 @@ class EgoNetwork(name: String = "Gandalf", radius: Int = 2) extends Generic { //
 }
 
 object EgoNetwork {
-  def apply(name: String = "Gandalf", radius: Int = 2) = new EgoNetwork(name, radius)
+  def apply(center_property: String, center_value: String, radius: Int = 2) = new EgoNetwork(center_property, center_value, radius)
 }
