@@ -1,7 +1,9 @@
 package com.raphtory.internals.management
 
+import com.raphtory.api.analysis.table.TableOutput
 import com.raphtory.api.input.Source
 import com.raphtory.api.querytracker.QueryProgressTracker
+import com.raphtory.internals.communication.ExclusiveTopic
 import com.raphtory.internals.communication.TopicRepository
 import com.raphtory.internals.components.querymanager.BlockIngestion
 import com.raphtory.internals.components.querymanager.ClientDisconnected
@@ -13,6 +15,8 @@ import com.raphtory.internals.components.querymanager.Query
 import com.raphtory.internals.components.querymanager.UnblockIngestion
 import com.raphtory.internals.graph.GraphAlteration.GraphUpdate
 import com.raphtory.internals.management.id.IDManager
+import com.raphtory.sinks.RowOutput
+import com.raphtory.sinks.TableOutputSink
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.Logger
 import org.slf4j.LoggerFactory
@@ -86,8 +90,14 @@ private[raphtory] class QuerySender(
   def establishGraph(): Unit =
     topics.graphSetup.endPoint sendAsync EstablishGraph(graphID, clientID)
 
-  def individualUpdate(update: GraphUpdate) =
+  def individualUpdate(update: GraphUpdate): Unit =
     writers((update.srcId % totalPartitions).toInt) sendAsync update
+
+  def outputCollector(tracker: QueryProgressTracker): TableOutput = {
+    val collector = new TableOutput(tracker, topics, config)
+    scheduler.execute(collector)
+    collector
+  }
 
   def submitSource(blocking: Boolean, sources: Seq[Source], id: String): Unit = {
 
